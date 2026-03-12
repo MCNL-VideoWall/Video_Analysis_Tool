@@ -248,27 +248,57 @@ if SHOW_VIDEO:
 # ==========================================
 # PHASE 3: Save Results & Reporting
 # ==========================================
-print("\n============ [Result] ============")
+print("\n\n\n================== [Result] ==================")
 now = datetime.now()
 time_str = now.strftime('%Y%m%d_%H%M%S')
 
 # display the result
 for data in log_data:
-    print(f"[{data[0]}] Frame Delay: {data[3]}, Transition Time: {data[4]} ms")
+    print(f"[{data[0]}] Frame Delay: {data[3]}, Time Delay: {data[4]} ms")
+
+# display the summary
+if log_data:
+    frame_delays = [data[3] for data in log_data]
+    transition_times = [data[4] for data in log_data]
+
+    avg_frame = np.mean(frame_delays)
+    max_frame = np.max(frame_delays)
+    min_frame = np.min(frame_delays)
+
+    avg_time = np.mean(transition_times)
+    max_time = np.max(transition_times)
+    min_time = np.min(transition_times)
+
+    print("\n--- [Transition Detection Summary] ---")
+    print(f"Count   : {len(log_data):>4}")
+    print(f"Average : {avg_frame:>4.1f} frames, {avg_time:>6.1f} ms")
+    print(f"Max     : {max_frame:>4} frames, {max_time:>6.1f} ms")
+    print(f"Min     : {min_frame:>4} frames, {min_time:>6.1f} ms")
+    print("--------------------------------------")
+else:
+    print("\nNo transition.")
 
 # about delay: -s:s
-if SAVE_SYNC:
-    csv_filename = os.path.join(base_dir, f"sync_d_{time_str}.csv")
+if SAVE_SYNC and log_data:
+    csv_filename = os.path.join(base_dir, f"{time_str}_sync.csv")
     with open(csv_filename, mode='w', newline='', encoding='utf-8-sig') as f:
         writer = csv.writer(f)
-        writer.writerow(["Trial", "Start Frame", "End Frame",
-                        "Frame Delay", "Transition Time (ms)"])
+        writer.writerow(["Number", "Start Frame", "End Frame",
+                        "Frame Delay", "Time Delay (ms)"])
         writer.writerows(log_data)
+
+        # writer.writerow([])
+        # writer.writerow(["---", "Summary", "---", "---", "---"])
+        # writer.writerow(["Total Trials", len(log_data), "", "", ""])
+        # writer.writerow(["Average", "", "", round(
+        #     avg_frame, 1), round(avg_time, 1)])
+        # writer.writerow(["Maximum", "", "", max_frame, round(max_time, 1)])
+        # writer.writerow(["Minimum", "", "", min_frame, round(min_time, 1)])
     print(f"\nSaved sync delay result in '{csv_filename}'.")
 
 # about frame state: -s:f
 if SAVE_FRAME:
-    frames_csv_filename = os.path.join(base_dir, f"f_stat_{time_str}.csv")
+    frames_csv_filename = os.path.join(base_dir, f"{time_str}_frame-stat.csv")
     with open(frames_csv_filename, mode='w', newline='', encoding='utf-8-sig') as f:
         writer = csv.writer(f)
         writer.writerow(["Frame", "dev1", "dev2", "dev3", "dev4", "Status"])
