@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from collections import Counter
-import csv
+import pandas as pd
 from datetime import datetime
 import argparse
 import os
@@ -154,7 +154,7 @@ while cap.isOpened():
     for dev, points in device_points.items():
         box_states = []
         for (cx, cy) in points:
-            roi = frame[max(0, cy-10):cy+10, max(0, cx-10):cx+10]
+            roi = frame[max(0, cy-1):cy+1, max(0, cx-1):cx+1]
             hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
             box_states.append(get_color_state_forced(hsv))
 
@@ -252,9 +252,16 @@ print("\n\n\n================== [Result] ==================")
 now = datetime.now()
 time_str = now.strftime('%Y%m%d_%H%M%S')
 
+# 분석한 비디오 파일 이름 추출 (확장자 제외)
+video_filename = os.path.basename(video_path)
+video_name, _ = os.path.splitext(video_filename)
+
+# 파일명 중복 방지를 위한 prefix 생성 (비디오이름_시간)
+file_prefix = f"{video_name}_{time_str}"
+
 # display the result
 for data in log_data:
-    print(f"[{data[0]}] Frame Delay: {data[3]}, Time Delay: {data[4]} ms")
+    print(f"[{data[0]}] Frame Delay: {data[3]}, Sync Time: {data[4]} ms")
 
 # display the summary
 if log_data:
@@ -270,37 +277,29 @@ if log_data:
     min_time = np.min(transition_times)
 
     print("\n--- [Transition Detection Summary] ---")
-    print(f"Count   : {len(log_data):>4}")
-    print(f"Average : {avg_frame:>4.1f} frames, {avg_time:>6.1f} ms")
-    print(f"Max     : {max_frame:>4} frames, {max_time:>6.1f} ms")
-    print(f"Min     : {min_frame:>4} frames, {min_time:>6.1f} ms")
+    print(f"Total Events: {len(log_data):>4}")
+    print(f"Average     : {avg_frame:>4.1f} frames, {avg_time:>6.1f} ms")
+    print(f"Maximum     : {max_frame:>4} frames, {max_time:>6.1f} ms")
+    print(f"Minimum     : {min_frame:>4} frames, {min_time:>6.1f} ms")
     print("--------------------------------------")
 else:
     print("\nNo transition.")
 
 # about delay: -s:s
 if SAVE_SYNC and log_data:
-    csv_filename = os.path.join(base_dir, f"{time_str}_sync.csv")
-    with open(csv_filename, mode='w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.writer(f)
-        writer.writerow(["Number", "Start Frame", "End Frame",
-                        "Frame Delay", "Time Delay (ms)"])
-        writer.writerows(log_data)
+    excel_filename = os.path.join(base_dir, f"{file_prefix}_sync.xlsx")  # 수정됨
+    df_sync = pd.DataFrame(log_data, columns=[
+                           "Event No.", "Start Frame", "End Frame", "Frame Delay", "Sync Time (ms)"])
+    df_sync.to_excel(excel_filename, index=False, engine='openpyxl')
 
-        # writer.writerow([])
-        # writer.writerow(["---", "Summary", "---", "---", "---"])
-        # writer.writerow(["Total Trials", len(log_data), "", "", ""])
-        # writer.writerow(["Average", "", "", round(
-        #     avg_frame, 1), round(avg_time, 1)])
-        # writer.writerow(["Maximum", "", "", max_frame, round(max_time, 1)])
-        # writer.writerow(["Minimum", "", "", min_frame, round(min_time, 1)])
-    print(f"\nSaved sync delay result in '{csv_filename}'.")
+    print(f"\nSaved sync delay result in '{excel_filename}'.")
 
 # about frame state: -s:f
 if SAVE_FRAME:
-    frames_csv_filename = os.path.join(base_dir, f"{time_str}_frame-stat.csv")
-    with open(frames_csv_filename, mode='w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.writer(f)
-        writer.writerow(["Frame", "dev1", "dev2", "dev3", "dev4", "Status"])
-        writer.writerows(frame_log_data)
-    print(f"\nSaved all frame states in '{frames_csv_filename}'.")
+    frames_excel_filename = os.path.join(
+        base_dir, f"{file_prefix}_frame-stat.xlsx")  # 수정됨
+    df_frames = pd.DataFrame(frame_log_data, columns=[
+                             "Frame", "dev1", "dev2", "dev3", "dev4", "Status"])
+    df_frames.to_excel(frames_excel_filename, index=False, engine='openpyxl')
+
+    print(f"\nSaved all frame states in '{frames_excel_filename}'.")
